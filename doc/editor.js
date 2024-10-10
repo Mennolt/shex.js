@@ -7,7 +7,6 @@ var BUILD_PRODUCTS = true // can disable if OWL and ShEx construction crashes.
 var SUPPRESS_DUPLICATE_CLASSES = true // Don't list subclasses in parent's package.
 var UPPER_UNLIMITED = '*'
 
-const UPCLASS = 'extends up'
 const KEYWORD = 'keyword'
 const SHEXMI = 'http://www.w3.org/ns/shex-xmi#'
 const COMMONMARK = 'https://github.com/commonmark/commonmark.js'
@@ -18,8 +17,6 @@ const CLASS_localname = 'localname'
 const CLASS_native = 'native'
 const CLASS_literal = 'literal'
 const CLASS_shapeExpr = 'shapeExpr'
-const ARROW_up = '⇧'
-const ARROW_down = '⇩'
 const MARKED_OPTS = {
   "baseUrl": null,
   "breaks": false,
@@ -224,6 +221,7 @@ function main () {
           let loader = new window.FileReader()
           loader.onload = function (loadEvent) {
             if (loadEvent.target.readyState !== 2) {
+              console.dir(loadEvent)
               return
             }
             if (loadEvent.target.error) {
@@ -273,6 +271,7 @@ function main () {
   prepareControls()
 
   function renderSchema (schemaText, source, status, namespace) {
+    console.log(source, status)
     let shexParser = ShEx.Parser.construct($('#namespace').val())
     let schema = shexParser.parse(schemaText)
     console.dir(schema)
@@ -356,64 +355,15 @@ function main () {
       )
 
       // @@ does a NodeConstraint render differently if it's in a nested vs. called from renderDecl?
-      div.append($('<table/>', {class: CLASS_shapeExpr}).append(renderShapeExpr(shapeDecl, '', declRow, abstract, [])))
+      div.append($('<table/>', {class: CLASS_shapeExpr}).append(renderShapeExpr(shapeDecl, '', declRow, abstract)))
       return div
     }
 
-    function renderShapeExpr (expr, lead, declRow, abstract, parents) {
-      let top = declRow ? [declRow] : []
+    function renderShapeExpr (expr, lead, declRow, abstract) {
+      let top = [declRow]
       switch (expr.type) {
       case 'Shape':
-        if ('extends' in expr) {
-          let exts = expr.extends.slice()
-
-          if (declRow) {
-            // Update the declRow with the first extends.
-            declRow.find('td:nth-child(2)').append(ref(exts.shift()))
-          }
-
-          // Each additional extends gets its own row.
-          top = top.concat(exts.map(
-            ext => $('<tr/>').append(
-              $('<td/>').text(lead + '│' + '   '),
-              $('<td/>').append(ref(ext)),
-              $('<td/>')
-            )
-          ))
-
-          function ref (ext) {
-            let arrow = $('<span/>', {class: UPCLASS}).text(ARROW_down)
-            arrow.on('click', (evt) => inject(arrow, evt, ext, parents))
-            return [arrow, $('<a/>', {href: '#' + trim(ext), class: UPCLASS}).append(trim(ext))]
-          }
-
-          function inject (arrow, evt, ext, parents) {
-            let tr = $(evt.target).parent().parent()
-            // let add = renderTripleExpr(schema.shapes[ext].expression, lead, false)
-            let shapeDecl = schema.shapes[ext]
-            if (shapeDecl.type === 'ShapeDecl') {
-              shapeDecl = shapeDecl.shapeExpr
-            }
-            let allMyElts = []
-            let add = renderShapeExpr(shapeDecl, lead, null, false, allMyElts)
-            Array.prototype.splice.apply(allMyElts, [0, 0].concat(add))
-            Array.prototype.splice.apply(parents, [0, 0].concat(allMyElts))
-            add.forEach(elt => elt.hide())
-            tr.after(add)
-            add.forEach(elt => elt.show('slow'))
-            arrow.off()
-            arrow.text(ARROW_up)
-            arrow.on('click', (evt) => remove(arrow, evt, ext, allMyElts))
-            return false
-          }
-          function remove (arrow, evt, ext, doomed) {
-            arrow.off()
-            doomed.forEach(elt => elt.hide('slow', function() { elt.remove();}))
-            arrow.text(ARROW_down)
-            arrow.on('click', (evt) => inject(arrow, evt, ext, []))
-          }
-        }
-        return expr.expression ? top.concat(renderTripleExpr(expr.expression, lead, true)) : top
+        return top.concat(renderTripleExpr(expr.expression, lead, false))
       case 'NodeConstraint':
         if ('values' in expr) {
           return top.concat(expr.values.map(
@@ -449,7 +399,14 @@ function main () {
           $('<td/>').append(
             lead,
             last ? '└' :  '├',
-            $('<span/>', {class: 'arrows'}).text(expr.valueExpr === undefined ? '◯' : expr.valueExpr.type === 'NodeConstraint' ? '▭' : '▻'),
+            $('<span/>').text(expr.valueExpr.type === 'NodeConstraint' ? '▭' : '▻').css(
+              {
+                display: 'inline-block',
+                width: '.9em',
+                'margin-left': '-.05em',
+                'text-align': 'left'
+              }
+            ),
             predicate
           ),
           $('<td/>').append(inline),
@@ -469,66 +426,42 @@ function main () {
     }
 
     function renderInlineShape (valueExpr) {
-      return valueExpr === undefined
-        ? '.'
-        : valueExpr.type === 'Shape'
+      return valueExpr.type === 'Shape'
         ? ''
         : valueExpr.type === 'ShapeRef'
         ? trim(valueExpr.reference)
         : valueExpr.type === 'NodeConstraint'
         ? renderInlineNodeConstraint(valueExpr)
         : valueExpr.type === 'ShapeOr'
-        ? valueExpr.shapeExprs.map(renderInlineShape).reduce(
-          (acc, elt, idx) => {
-            if (idx !== 0) {
-              acc = acc.concat(' ', $("<span/>", { class: 'keyword'}).text("OR"), ' ')
-            }
-            return acc.concat(elt)
-          }, []
-        )
+        ? valueExpr.shapeExprs.map(renderInlineShape).join(' <span class="keyword">OR</span> ')
         : (() => { throw Error('renderInlineShape doesn\'t handle ' + JSON.stringify(valueExpr, null, 2)) })()
     }
 
     function renderInlineNodeConstraint (expr) {
+      if (Object.keys(expr).length > 2) {
+        return '' // pass to inline renderer
+      }
       let ret = [];
       let keys = Object.keys(expr)
-      let append = appender(ret)
-      let take = (key) => take1(keys, key)
-
       take('type')
-      if (take('datatype')) { append(trim(expr.datatype)) }
-      if (take('values')) { append('[', expr.values.reduce(
-        (acc, v, idx) => acc.concat(idx === 0 ? null : ' ', trimStr(v)), []
-      ), ']') }
-      if (take('nodeKind')) { append($('<span/>', { class: 'keyword'}).text(expr.nodeKind)) }
+      if (take('datatype')) { ret.push(trim(expr.datatype)) }
+      if (take('values')) { ret.push('[' + expr.values.map(
+        v => trimStr(v)
+      ).join(' ') + ']') }
+      if (take('nodeKind')) { ret.push(expr.nodeKind) }
       if (keys.length) {
         throw Error('renderInlineNodeConstraint didn\'t match ' + keys.join(',') + ' in ' + JSON.stringify(expr, null, 2))
       }
-      return ret
+      return ret.join(' ')
 
-    }
-
-    function take1 (keys, key) {
-      let idx = keys.indexOf(key)
-      if (idx === -1) {
-        return false
-      } else {
-        keys.splice(idx, 1)
-        return true
-      }
-    }
-
-    function append1 () {
-      for (let i = 1; i < arguments.length; ++i) {
-        let elts = arguments[i].constructor === Array
-              ? arguments[i]
-              : [arguments[i]]
-        elts.forEach(elt => { arguments[0].push(elt) })
-      }
-    }
-    function appender (target) {
-      return function () {
-        return append1.apply(null, [target].concat([].slice.call(arguments)))
+      function take (key) {
+        let idx = keys.indexOf(key)
+        if (idx === -1) {
+          return false
+        } else {
+          keys.splice(idx, 1)
+          return true
+        }
       }
     }
 
@@ -536,7 +469,7 @@ function main () {
       if (valueExpr.type !== 'Shape') {
         return declRow
       }
-      return renderShapeExpr(valueExpr, lead, declRow, false, [])
+      return renderShapeExpr(valueExpr, lead, declRow, false)
     }
 
     function renderCardinality (expr) {

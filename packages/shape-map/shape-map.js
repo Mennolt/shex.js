@@ -3,8 +3,7 @@
  * See README for description.
  */
 
-const ShapeMapCjsModule = (function () {
-
+var ShapeMap = (function () {
   const symbols = require("./lib/ShapeMapSymbols")
 
   // Write the parser object directly into the symbols so the caller shares a
@@ -15,4 +14,4 @@ const ShapeMapCjsModule = (function () {
 
 // Export the `ShExValidator` class as a whole.
 if (typeof require !== "undefined" && typeof exports !== "undefined")
-  module.exports = ShapeMapCjsModule;
+  module.exports = ShapeMap;

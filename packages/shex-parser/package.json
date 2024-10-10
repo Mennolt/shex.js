@@ -1,6 +1,6 @@
 {
   "name": "@shexjs/parser",
-  "version": "1.0.0-alpha.28",
+  "version": "1.0.0-alpha.3",
   "description": "Shape Expressions Compact Syntax (ShExC) parser.",
   "author": {
     "name": "Eric Prud'hommeaux",
@@ -20,14 +20,9 @@
     "node": ">=0.10.0"
   },
   "dependencies": {
-    "@shexjs/util": "^1.0.0-alpha.28",
-    "@ts-jison/parser": "^0.4.1-alpha.1"
-  },
-  "devDependencies": {
-    "@ts-jison/parser-generator": "^0.4.1-alpha.2"
+    "@shexjs/core": "file:../shex-core"
   },
   "scripts": {
-    "parser": "ts-jison -n ShExJison -t javascript -p lr -o ./lib/ShExJison.js ./lib/ShExJison.jison",
     "test": "cd .. && mocha -C -R dot",
     "browser": "browserify shex.js -s ShEx -o browser/shex-parser-browserify.js && uglifyjs browser/shex-parser-browserify.js --comments -mco browser/shex-parser-browserify.min.js"
   },
@@ -36,7 +31,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/shexjs/shex.js.git"
+    "url": "https://github.com/shexSpec/shex.js.git"
   },
   "bugs": {
     "url": "https://github.com/shexSpec/grammar/issues"

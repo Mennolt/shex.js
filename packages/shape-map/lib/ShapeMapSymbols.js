@@ -6,11 +6,11 @@
  *   testing.
  */
 
-const ShapeMapSymbols = (function () {
+var ShapeMapSymbols = (function () {
   return {
-    Focus: { term: "FOCUS" },
-    Start: { term: "START" },
-    Wildcard: { term: "WILDCARD" },
+    focus: { term: "FOCUS" },
+    start: { term: "START" },
+    wildcard: { term: "WILDCARD" },
   }
 })();
 
